@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Logo HUD Animation</title>
+    <style>
+        :root {
+            --bg: #030405;
+            --fg-soft: rgba(0, 150, 255, 0.2);
+            --fg-strong: #00a8ff;
+            --fg-highlight: #0aff9d;
+            --fg-green: #0aff9d;
+            --fg-amber: #00d4ff;
+            --fg-red: #0088ff;
+            --ring-muted: #1a1d23;
+            --blue-glow: #0066ff;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at top, #10131d, #050608 65%, #010203);
+            color: #fff;
+            font-family: "Orbitron", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .starfield {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                radial-gradient(circle at 20% 20%, rgba(0, 40, 75, 0.4), transparent 60%),
+                radial-gradient(circle at 80% 10%, rgba(0, 50, 90, 0.35), transparent 55%),
+                radial-gradient(circle at 50% 80%, rgba(0, 30, 60, 0.25), transparent 60%);
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0));
+            opacity: 0.3;
+            transform: scale(var(--star-scale, 1));
+            animation: twinkle var(--twinkle-duration, 4s) ease-in-out infinite;
+            animation-delay: var(--twinkle-delay, 0s);
+        }
+
+        .star.star--flare {
+            animation: twinkle var(--twinkle-duration, 4s) ease-in-out infinite,
+                flare 0.8s ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: var(--star-min-opacity, 0.15);
+                transform: scale(var(--star-scale, 1));
+                filter: blur(0);
+            }
+            50% {
+                opacity: var(--star-max-opacity, 0.9);
+                transform: scale(calc(var(--star-scale, 1) * 1.6));
+                filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.75));
+            }
+        }
+
+        @keyframes flare {
+            0% {
+                opacity: var(--star-min-opacity, 0.2);
+                transform: scale(var(--star-scale, 1));
+            }
+            50% {
+                opacity: 1;
+                transform: scale(calc(var(--star-scale, 1) * 2));
+                filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.85));
+            }
+            100% {
+                opacity: var(--star-max-opacity, 0.9);
+                transform: scale(calc(var(--star-scale, 1) * 1.3));
+            }
+        }
+
+        .hud-wrapper {
+            position: relative;
+            width: min(90vmin, 720px);
+            aspect-ratio: 1 / 1;
+            display: grid;
+            place-items: center;
+            z-index: 1;
+        }
+
+        .intro-overlay {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 4rem 1.5rem;
+            background: radial-gradient(circle at 30% 20%, rgba(25, 35, 70, 0.9), rgba(5, 10, 25, 0.97) 55%, rgba(2, 4, 10, 0.98) 90%);
+            color: #f5fbff;
+            font-family: "Orbitron", "Segoe UI", sans-serif;
+            text-align: center;
+            transition: opacity 0.8s ease, visibility 0.8s ease;
+            z-index: 5;
+        }
+
+        .intro-overlay.intro-overlay--hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .intro-content {
+            position: relative;
+            max-width: 520px;
+            display: grid;
+            gap: 2.4rem;
+        }
+
+        .intro-title {
+            font-size: clamp(2.2rem, 6vw, 3.6rem);
+            letter-spacing: 0.4rem;
+            text-transform: uppercase;
+            text-shadow:
+                0 0 12px rgba(0, 200, 255, 0.5),
+                0 0 28px rgba(0, 120, 255, 0.45);
+        }
+
+        .intro-subtitle {
+            font-size: clamp(1rem, 2.4vw, 1.35rem);
+            letter-spacing: 0.18rem;
+            color: rgba(220, 239, 255, 0.78);
+            text-transform: uppercase;
+        }
+
+        .intro-credits {
+            font-size: clamp(0.8rem, 1.8vw, 1rem);
+            color: rgba(190, 220, 255, 0.8);
+            letter-spacing: 0.12rem;
+            text-transform: uppercase;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .intro-heart {
+            color: #ff5fa3;
+            filter: drop-shadow(0 0 10px rgba(255, 95, 163, 0.6));
+        }
+
+        .intro-button {
+            justify-self: center;
+            padding: 0.9rem 3.2rem;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 200, 255, 0.75);
+            background: linear-gradient(135deg, rgba(0, 160, 255, 0.9), rgba(0, 255, 210, 0.85));
+            color: #051021;
+            font-weight: 700;
+            font-size: 1.05rem;
+            letter-spacing: 0.2rem;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow:
+                0 0 16px rgba(0, 210, 255, 0.6),
+                inset 0 0 10px rgba(255, 255, 255, 0.4);
+        }
+
+        .intro-button:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow:
+                0 0 20px rgba(0, 210, 255, 0.8),
+                inset 0 0 12px rgba(255, 255, 255, 0.45);
+        }
+
+        .intro-button:active {
+            transform: translateY(1px) scale(0.99);
+        }
+
+        .intro-button:disabled {
+            opacity: 0.65;
+            cursor: wait;
+            box-shadow:
+                0 0 12px rgba(0, 150, 220, 0.5),
+                inset 0 0 8px rgba(255, 255, 255, 0.3);
+        }
+
+        .hud {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .outer-trace {
+            fill: none;
+            stroke: var(--ring-muted);
+            stroke-width: 2;
+            opacity: 0.35;
+        }
+
+        .outer-trace--thin {
+            stroke-width: 1;
+            opacity: 0.25;
+        }
+
+        .outer-ring {
+            fill: none;
+            stroke: url(#arcGreen);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 120 40;
+            stroke-dashoffset: 0;
+            opacity: 0.75;
+        }
+
+        .outer-ticks {
+            fill: none;
+            stroke: var(--fg-soft);
+            stroke-width: 6;
+            stroke-dasharray: 6 26;
+            stroke-linecap: round;
+            opacity: 0.6;
+        }
+
+        .outer-ticks--offset {
+            stroke-dasharray: 8 22;
+            stroke-dashoffset: 16;
+            opacity: 0.45;
+        }
+
+        .arc-layer {
+            fill: none;
+            stroke-linecap: round;
+            opacity: 0;
+        }
+
+        .arc-layer--glow {
+            stroke-width: 24;
+            filter: blur(12px);
+        }
+
+        .arc-layer--base {
+            stroke-width: 12;
+        }
+
+        .arc-layer--detail {
+            stroke-width: 6;
+            stroke-dasharray: 18 12;
+        }
+
+        .arc-layer--spark {
+            stroke-width: 4;
+            stroke-dasharray: 2 14;
+        }
+
+        .arc-segment--green .arc-layer--glow { stroke: rgba(36, 255, 220, 0.45); }
+        .arc-segment--green .arc-layer--base { stroke: url(#arcGreenVivid); }
+        .arc-segment--green .arc-layer--detail { stroke: rgba(100, 255, 235, 0.9); }
+        .arc-segment--green .arc-layer--spark { stroke: rgba(255, 255, 255, 0.75); }
+
+        .arc-segment--amber .arc-layer--glow { stroke: rgba(255, 194, 102, 0.4); }
+        .arc-segment--amber .arc-layer--base { stroke: url(#arcAmberVivid); }
+        .arc-segment--amber .arc-layer--detail { stroke: rgba(255, 211, 140, 0.9); }
+        .arc-segment--amber .arc-layer--spark { stroke: rgba(255, 237, 199, 0.75); }
+
+        .arc-segment--red .arc-layer--glow { stroke: rgba(255, 120, 120, 0.45); }
+        .arc-segment--red .arc-layer--base { stroke: url(#arcRedVivid); }
+        .arc-segment--red .arc-layer--detail { stroke: rgba(255, 153, 153, 0.9); }
+        .arc-segment--red .arc-layer--spark { stroke: rgba(255, 214, 214, 0.75); }
+
+        .inner-ring {
+            fill: none;
+            stroke: rgba(0, 168, 255, 0.45);
+            stroke-width: 4;
+            stroke-dasharray: 12 12;
+            stroke-linecap: round;
+        }
+
+        .inner-ring--glow {
+            stroke: rgba(0, 212, 255, 0.75);
+            stroke-width: 8;
+            filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.65));
+        }
+
+        .sound-wave {
+            fill: none;
+            stroke: rgba(0, 212, 255, 0.6);
+            stroke-width: 3;
+            stroke-linecap: round;
+            opacity: 0;
+            will-change: transform, opacity;
+        }
+
+        #sound-waves,
+        #particles,
+        .outer-rotate,
+        #orbit-dots,
+        .radar-pulse {
+            will-change: transform, opacity;
+            transform: translateZ(0);
+        }
+
+        #particles {
+            transform-origin: 300px 300px;
+            transform-box: fill-box;
+            --particle-glow-primary: 22px;
+            --particle-glow-secondary: 38px;
+            --particle-glow-primary-alpha: 0.75;
+            --particle-glow-secondary-alpha: 0.65;
+        }
+
+        .particle {
+            fill: rgba(96, 255, 240, 0.95);
+            stroke: rgba(255, 255, 255, 0.8);
+            stroke-width: 0.8;
+            opacity: 0;
+            filter:
+                drop-shadow(0 0 var(--particle-glow-primary) rgba(76, 244, 255, var(--particle-glow-primary-alpha)))
+                drop-shadow(0 0 var(--particle-glow-secondary) rgba(0, 212, 255, var(--particle-glow-secondary-alpha)))
+                drop-shadow(0 0 calc(var(--particle-glow-secondary) * 1.6) rgba(0, 170, 255, 0.55));
+            mix-blend-mode: screen;
+            transform-origin: 300px 300px;
+            transition: filter 0.6s ease, opacity 0.6s ease;
+        }
+
+        .logo-part {
+            opacity: 0;
+            transform-box: fill-box;
+            transform-origin: center;
+        }
+
+        .logo-eye-white {
+            fill: #fff;
+        }
+
+        .logo-eye-black-container {
+            transform-box: fill-box;
+            transform-origin: center;
+            transform: scale(0.72, 0.82);
+        }
+
+        .logo-eye-black {
+            transform-box: fill-box;
+            transform-origin: bottom;
+        }
+
+        .arc-segment {
+            filter: drop-shadow(0 0 14px rgba(0, 0, 0, 0.35));
+        }
+
+        .arc-segment--green {
+            filter: drop-shadow(0 0 18px rgba(0, 245, 210, 0.55)) drop-shadow(0 0 32px rgba(0, 200, 255, 0.45));
+        }
+
+        .arc-segment--red {
+            filter: drop-shadow(0 0 18px rgba(255, 120, 120, 0.55)) drop-shadow(0 0 32px rgba(255, 90, 90, 0.35));
+        }
+
+        .arc-segment--amber {
+            filter: drop-shadow(0 0 18px rgba(255, 200, 120, 0.55)) drop-shadow(0 0 32px rgba(255, 180, 90, 0.35));
+        }
+
+        .fusion-core {
+            opacity: 0;
+            color: rgba(0, 232, 255, 0.85);
+            fill: currentColor;
+            filter: drop-shadow(0 0 35px currentColor) drop-shadow(0 0 75px rgba(255, 255, 255, 0.45));
+        }
+
+        .orbit-dot {
+            fill: var(--fg-amber);
+            opacity: 0;
+        }
+
+        .orbit-dot--tiny {
+            fill: var(--fg-green);
+        }
+
+        .radar-pulse {
+            fill: none;
+            stroke: rgba(0, 212, 255, 0.35);
+            stroke-width: 4;
+            opacity: 0;
+        }
+
+        .radar-pulse,
+        .outer-rotate,
+        #orbit-dots,
+        #logo-group {
+            transform-origin: 50% 50%;
+        }
+
+        .hud::after {
+            content: "LOGO PROTOCOL";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, calc(-50% - 210px));
+            font-size: clamp(0.7rem, 1.8vmin, 1.1rem);
+            letter-spacing: 0.35em;
+            color: rgba(0, 212, 255, 0.65);
+        }
+    </style>
+</head>
+<body>
+    <div class="intro-overlay" id="introOverlay" aria-labelledby="introTitle">
+        <div class="intro-content">
+            <div class="intro-subtitle">Billions Presents</div>
+            <h1 class="intro-title" id="introTitle">Billions Logo Origin</h1>
+            <div class="intro-credits">
+                <span>Made with <span class="intro-heart">♥️</span> by Gigaboson</span>
+            </div>
+            <button class="intro-button" id="startButton" type="button">Start Experience</button>
+        </div>
+    </div>
+    <div class="starfield" aria-hidden="true"></div>
+    <div class="hud-wrapper">
+        <svg class="hud" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.8" />
+                    <stop offset="60%" stop-color="#0088cc" stop-opacity="0.3" />
+                    <stop offset="100%" stop-color="#0f0f0f" stop-opacity="0" />
+                </radialGradient>
+                <linearGradient id="arcGreen" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#0aff9d" />
+                    <stop offset="100%" stop-color="#00d4ff" />
+                </linearGradient>
+                <linearGradient id="arcRed" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#0088ff" />
+                    <stop offset="100%" stop-color="#00d4ff" />
+                </linearGradient>
+                <linearGradient id="arcGreenVivid" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#0aff9d" />
+                    <stop offset="45%" stop-color="#00ffe1" />
+                    <stop offset="100%" stop-color="#00d4ff" />
+                </linearGradient>
+                <linearGradient id="arcAmberVivid" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#ffb347" />
+                    <stop offset="45%" stop-color="#ffd166" />
+                    <stop offset="100%" stop-color="#ffe29a" />
+                </linearGradient>
+                <linearGradient id="arcRedVivid" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#ff4d6d" />
+                    <stop offset="55%" stop-color="#ff7f50" />
+                    <stop offset="100%" stop-color="#ffb347" />
+                </linearGradient>
+            </defs>
+
+            <circle cx="300" cy="300" r="280" class="outer-trace" />
+            <circle cx="300" cy="300" r="250" class="outer-trace outer-trace--thin" />
+
+            <g class="outer-rotate">
+                <circle cx="300" cy="300" r="260" class="outer-ring" />
+                <circle cx="300" cy="300" r="240" class="outer-ticks" />
+                <circle cx="300" cy="300" r="210" class="outer-ticks outer-ticks--offset" />
+            </g>
+
+            <g class="outer-arcs">
+                <g class="arc-segment arc-segment--green">
+                    <path class="arc arc-layer arc-layer--glow" d="M57.51 160 A280 280 0 0 1 160 57.51" />
+                    <path class="arc arc-layer arc-layer--base" d="M57.51 160 A280 280 0 0 1 160 57.51" />
+                    <path class="arc arc-layer arc-layer--detail" d="M57.51 160 A280 280 0 0 1 160 57.51" />
+                    <path class="arc arc-layer arc-layer--spark" d="M57.51 160 A280 280 0 0 1 160 57.51" />
+                </g>
+                <g class="arc-segment arc-segment--red">
+                    <path class="arc arc-layer arc-layer--glow" d="M563.11 395.56 A280 280 0 0 1 395.56 563.11" />
+                    <path class="arc arc-layer arc-layer--base" d="M563.11 395.56 A280 280 0 0 1 395.56 563.11" />
+                    <path class="arc arc-layer arc-layer--detail" d="M563.11 395.56 A280 280 0 0 1 395.56 563.11" />
+                    <path class="arc arc-layer arc-layer--spark" d="M563.11 395.56 A280 280 0 0 1 395.56 563.11" />
+                </g>
+                <g class="arc-segment arc-segment--amber">
+                    <path class="arc arc-layer arc-layer--glow" d="M199.59 561.41 A280 280 0 0 1 36.89 395.77" />
+                    <path class="arc arc-layer arc-layer--base" d="M199.59 561.41 A280 280 0 0 1 36.89 395.77" />
+                    <path class="arc arc-layer arc-layer--detail" d="M199.59 561.41 A280 280 0 0 1 36.89 395.77" />
+                    <path class="arc arc-layer arc-layer--spark" d="M199.59 561.41 A280 280 0 0 1 36.89 395.77" />
+                </g>
+            </g>
+
+            <g class="inner-shell">
+                <circle cx="300" cy="300" r="160" class="inner-ring" />
+                <circle cx="300" cy="300" r="140" class="inner-ring inner-ring--glow" />
+                <circle cx="300" cy="300" r="130" fill="url(#coreGlow)" />
+            </g>
+
+            <g id="sound-waves">
+                <path class="sound-wave wave-1" d="M 150 300 Q 200 280, 250 300 T 350 300 T 450 300" />
+                <path class="sound-wave wave-2" d="M 150 300 Q 200 320, 250 300 T 350 300 T 450 300" />
+                <path class="sound-wave wave-3" d="M 170 300 Q 220 270, 270 300 T 370 300 T 470 300" />
+                <path class="sound-wave wave-4" d="M 170 300 Q 220 330, 270 300 T 370 300 T 470 300" />
+                <path class="sound-wave wave-5" d="M 130 300 Q 180 260, 230 300 T 330 300 T 430 300" />
+                <path class="sound-wave wave-6" d="M 130 300 Q 180 340, 230 300 T 330 300 T 430 300" />
+            </g>
+
+            <g id="particles">
+                <circle cx="300" cy="160" r="4" class="particle p-1" />
+                <circle cx="399" cy="200" r="4" class="particle p-2" />
+                <circle cx="440" cy="300" r="4" class="particle p-3" />
+                <circle cx="399" cy="400" r="4" class="particle p-4" />
+                <circle cx="300" cy="440" r="4" class="particle p-5" />
+                <circle cx="201" cy="400" r="4" class="particle p-6" />
+                <circle cx="160" cy="300" r="4" class="particle p-7" />
+                <circle cx="201" cy="200" r="4" class="particle p-8" />
+            </g>
+
+            <circle cx="300" cy="300" r="8" class="fusion-core" />
+
+            <g id="logo-group">
+                <!-- Main blue shape -->
+                <path class="logo-part logo-main" d="M156.312 61C182.619 61 203.945 82.3259 203.945 108.633V114H213.5C218.747 114 223 118.253 223 123.5C223 128.747 218.747 133 213.5 133H203.945V150.218C203.945 169.927 187.968 185.904 168.259 185.904H78.7412C59.0322 185.904 43.0549 169.927 43.0547 150.218V133H33.5C28.2533 133 24 128.747 24 123.5C24 118.253 28.2533 114 33.5 114H43.0547V108.633C43.0548 82.326 64.3807 61.0001 90.6875 61C103.405 61 114.957 65.9846 123.5 74.1055C132.043 65.9845 143.595 61 156.312 61Z" fill="#0046FF"/>
+                
+                <!-- Left eye white -->
+                <path class="logo-part logo-eye-white logo-eye-left-white" d="M72.6914 108.633C72.6914 98.6952 80.7479 90.6387 90.6861 90.6387V90.6387C100.624 90.6387 108.681 98.6952 108.681 108.633V144.266C108.681 150.894 103.308 156.266 96.6808 156.266H84.6914C78.064 156.266 72.6914 150.894 72.6914 144.266V108.633Z" fill="white" />
+                
+                <!-- Left eye black -->
+                <g class="logo-eye-black-container">
+                    <path class="logo-part logo-eye-black logo-eye-left-black" d="M72.6914 108.633C72.6914 98.6952 80.7479 90.6387 90.6861 90.6387V90.6387C100.624 90.6387 108.681 98.6952 108.681 108.633V144.266C108.681 150.894 103.308 156.266 96.6808 156.266H84.6914C78.064 156.266 72.6914 150.894 72.6914 144.266V108.633Z" fill="black"/>
+                </g>
+                
+                <!-- Right eye white -->
+                <path class="logo-part logo-eye-white logo-eye-right-white" d="M138.32 108.633C138.32 98.6952 146.377 90.6387 156.315 90.6387V90.6387C166.253 90.6387 174.31 98.6952 174.31 108.633V144.266C174.31 150.894 168.937 156.266 162.31 156.266H150.32C143.693 156.266 138.32 150.894 138.32 144.266V108.633Z" fill="white" />
+                
+                <!-- Right eye black -->
+                <g class="logo-eye-black-container">
+                    <path class="logo-part logo-eye-black logo-eye-right-black" d="M138.32 108.633C138.32 98.6952 146.377 90.6387 156.315 90.6387V90.6387C166.253 90.6387 174.31 98.6952 174.31 108.633V144.266C174.31 150.894 168.937 156.266 162.31 156.266H150.32C143.693 156.266 138.32 150.894 138.32 144.266V108.633Z" fill="black"/>
+                </g>
+            </g>
+
+            <g id="orbit-dots">
+                <circle cx="300" cy="140" r="6" class="orbit-dot" />
+                <circle cx="380" cy="180" r="4" class="orbit-dot orbit-dot--tiny" />
+                <circle cx="220" cy="180" r="4" class="orbit-dot orbit-dot--tiny" />
+                <circle cx="450" cy="280" r="5" class="orbit-dot" />
+                <circle cx="180" cy="320" r="5" class="orbit-dot" />
+                <circle cx="410" cy="420" r="4" class="orbit-dot orbit-dot--tiny" />
+                <circle cx="190" cy="420" r="4" class="orbit-dot orbit-dot--tiny" />
+            </g>
+
+            <g class="radar-ring">
+                <circle cx="300" cy="300" r="180" class="radar-pulse" />
+                <circle cx="300" cy="300" r="180" class="radar-pulse radar-pulse--delay" />
+            </g>
+        </svg>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script>
+        // ===== LOGO POSITION SETTINGS =====
+        const LOGO_X = 225;
+        const LOGO_Y = 220;
+        const LOGO_SCALE = 0.75;
+        
+        // ===== PARTICLE SETTINGS =====
+        const PARTICLE_RADIUS = 220;  // Distance from center (140 = between inner rings)
+        const PARTICLE_CENTER_X = 300;  // Center point X
+        const PARTICLE_CENTER_Y = 300;  // Center point Y
+        const PARTICLE_COUNT = 8;  // Number of particles
+        const PARTICLE_ROTATION_DURATION = 5200;  // Duration of rotation before converging (ms)
+        const PARTICLE_ROTATION_SPEED = 360;  // Degrees to rotate (360 = full circle)
+        const FULL_REVOLUTION_RADIANS = PARTICLE_ROTATION_SPEED * (Math.PI / 180);
+        // ==================================
+
+        class SoundEngine {
+            constructor(options = {}) {
+                const { autoStartLoops = true } = options;
+                this.audioEnabled = false;
+                this.muted = false;
+                this.pendingActions = [];
+                this.cueLibrary = this.buildCueLibrary();
+                this.loopConfigs = this.buildLoopConfigs();
+                this.loopAudios = new Map();
+                this.cueBuffers = new Map();
+                this.cueLoading = new Map();
+                this.htmlAudioCache = new Map();
+                this.htmlPreloads = new Map();
+                this.cueTimers = new Map();
+                this.activeCueSources = new Map();
+                this.AudioContextCtor = window.AudioContext || window.webkitAudioContext || null;
+                this.context = null;
+                this.masterGain = null;
+                this.autoStartLoops = autoStartLoops;
+                this.persistentLoopNames = ["ambient", "arcReactor", "radarSweep"];
+
+                this.unlockAudio = this.unlockAudio.bind(this);
+                this.visibilityHandler = this.handleVisibilityChange.bind(this);
+
+                document.addEventListener("pointerdown", this.unlockAudio, { once: true, passive: true });
+                document.addEventListener("keydown", this.unlockAudio, { once: true, passive: true });
+                document.addEventListener("visibilitychange", this.visibilityHandler);
+
+                if (document.visibilityState === "visible") {
+                    this.unlockAudio();
+                }
+            }
+
+            buildCueLibrary() {
+                return {
+                    boot: { src: "/audio/boot_sequence.mp3", volume: 2 },
+                    arcSweep: { src: "/audio/arc_sweep.mp3", volume: 0.8 },
+                    waveRise: { src: "/audio/wave_rise.mp3", volume: 0.42 },
+                    waveRipple: { src: "/audio/wave_ripple.mp3", volume: 0.4 },
+                    particleBurst: { src: "/audio/particle_burst.mp3", volume: 0.6 },
+                    particleCombine: { src: "/audio/particle_combine.mp3", volume: 0.55 },
+                    coreCharge: { src: "/audio/core_charge.mp3", volume: 0.62 },
+                    corePulse: { src: "/audio/core_pulse.mp3", volume: 1 },
+                    coreBlast: { src: "/audio/core_blast.mp3", volume: 0.68 },
+                    logoReveal: { src: "/audio/logo_reveal.mp3", volume: 0.5 },
+                    eyeBlink: { src: "/audio/eye_blink.mp3", volume: 1.2 },
+                    innerRingReveal: { src: "/audio/inner_ring_reveal.mp3", volume: 0.6 }
+                };
+            }
+
+            buildLoopConfigs() {
+                return {
+                    ambient: { id: "ambient-bed", src: "/audio/ambient_bed.mp3", loop: true, volume: 1 },
+                    arcReactor: { id: "arc-reactor-loop", src: "/audio/arc_reactor_loop.mp3", loop: true, volume: 1.2 },
+                    radarSweep: { id: "radar-sweep-loop", src: "/audio/radar_sweep_loop.mp3", loop: true, volume: 0.3 },
+                    waveShimmer: { id: "wave-shimmer-loop", src: "/audio/wave_shimmer_loop.mp3", loop: true, volume: 0.32 },
+                    particleOrbits: { id: "particle-orbit-loop", src: "/audio/particle_orbit_loop.mp3", loop: true, volume: 1 }
+                };
+            }
+
+            createAudio({ src, loop = false, volume = 0.6 }) {
+                if (!src) {
+                    return null;
+                }
+
+                const audio = new Audio(src);
+                audio.loop = Boolean(loop);
+                audio.volume = Math.min(Math.max(volume, 0), 1);
+                audio.preload = "auto";
+                audio.crossOrigin = "anonymous";
+                return audio;
+            }
+
+            unlockAudio() {
+                this.audioEnabled = true;
+
+                if (this.AudioContextCtor) {
+                    const ctx = this.ensureContext();
+                    if (ctx && ctx.state === "suspended") {
+                        ctx.resume().catch(() => {});
+                    }
+                }
+
+                if (this.autoStartLoops) {
+                    this.startPersistentLoops();
+                }
+
+                this.preloadCue("waveRipple");
+                this.preloadCue("waveRise");
+
+                this.flushPending();
+            }
+            startPersistentLoops({ forceRestart = false } = {}) {
+                this.persistentLoopNames.forEach(name => {
+                    this.startLoop(name, { forceRestart });
+                });
+            }
+
+            handleVisibilityChange() {
+                if (document.hidden) {
+                    this.pauseAllLoops();
+                    if (this.context && this.context.state === "running") {
+                        this.context.suspend().catch(() => {});
+                    }
+                    return;
+                }
+
+                if (!this.audioEnabled || this.muted) {
+                    return;
+                }
+
+                if (this.context && this.context.state === "suspended") {
+                    this.context.resume().catch(() => {});
+                }
+
+                this.loopAudios.forEach((_, name) => {
+                    this.startLoop(name);
+                });
+                this.flushPending();
+            }
+
+            setMuted(muted) {
+                this.muted = Boolean(muted);
+                if (this.muted) {
+                    this.pauseAllLoops();
+                    return;
+                }
+
+                if (!this.audioEnabled) {
+                    return;
+                }
+
+                this.loopAudios.forEach((_, name) => {
+                    this.startLoop(name);
+                });
+                this.flushPending();
+            }
+
+            playCue(name, options = {}) {
+                const config = this.cueLibrary[name];
+                if (!config) {
+                    return;
+                }
+
+                const trigger = () => {
+                    if (this.muted) {
+                        return;
+                    }
+
+                    const targetVolume = typeof options.volume === "number" ? options.volume : (config.volume ?? 1);
+                    const tag = options.tag || name;
+                    const allowOverlap = Boolean(options.allowOverlap);
+                    const delayMs = typeof options.delayMs === "number" && options.delayMs > 0
+                        ? options.delayMs
+                        : typeof options.delaySeconds === "number" && options.delaySeconds > 0
+                            ? options.delaySeconds * 1000
+                            : 0;
+
+                    if (this.AudioContextCtor) {
+                        const ctx = this.ensureContext();
+                        if (!ctx) {
+                            return;
+                        }
+
+                        if (ctx.state === "suspended") {
+                            ctx.resume().catch(() => {});
+                        }
+
+                        if (!allowOverlap) {
+                            this.stopActiveCue(tag);
+                            this.clearCueTimer(tag);
+                        }
+
+                        this.loadCueBuffer(name, config.src)
+                            .then(buffer => {
+                                if (!buffer) {
+                                    return;
+                                }
+
+                                const startPlayback = () => {
+                                    if (!allowOverlap) {
+                                        this.stopActiveCue(tag);
+                                    }
+
+                                    const source = ctx.createBufferSource();
+                                    source.buffer = buffer;
+
+                                    const gainNode = ctx.createGain();
+                                    gainNode.gain.setValueAtTime(Math.max(targetVolume, 0), ctx.currentTime);
+
+                                    source.connect(gainNode).connect(this.masterGain || ctx.destination);
+                                    source.start();
+
+                                    if (!allowOverlap) {
+                                        this.trackActiveCue(tag, { context: ctx, source, gainNode, htmlAudio: null });
+                                        source.addEventListener("ended", () => {
+                                            if (this.activeCueSources.get(tag)?.source === source) {
+                                                this.activeCueSources.delete(tag);
+                                            }
+                                        });
+                                    } else {
+                                        source.addEventListener("ended", () => {
+                                            source.disconnect();
+                                            gainNode.disconnect();
+                                        });
+                                    }
+                                };
+
+                                if (delayMs > 0) {
+                                    const timer = window.setTimeout(() => {
+                                        if (!allowOverlap) {
+                                            this.cueTimers.delete(tag);
+                                        }
+                                        startPlayback();
+                                    }, delayMs);
+                                    if (!allowOverlap) {
+                                        this.cueTimers.set(tag, timer);
+                                    }
+                                } else {
+                                    startPlayback();
+                                }
+                            })
+                            .catch(error => {
+                                console.warn(`[SoundEngine] Failed to play cue "${name}"`, error);
+                            });
+                        return;
+                    }
+
+                    if (!allowOverlap) {
+                        this.stopActiveCue(tag);
+                        this.clearCueTimer(tag);
+                    }
+
+                    let audio = null;
+                    if (allowOverlap) {
+                        audio = this.createAudio({ ...config, loop: false, volume: Math.max(targetVolume, 0) });
+                    } else {
+                        audio = this.htmlAudioCache.get(tag);
+                        if (!audio) {
+                            audio = this.createAudio({ ...config, loop: false, volume: Math.max(targetVolume, 0) });
+                            if (audio) {
+                                this.htmlAudioCache.set(tag, audio);
+                            }
+                        } else {
+                            audio.currentTime = 0;
+                            audio.volume = Math.max(targetVolume, 0);
+                        }
+                    }
+
+                    if (!audio) {
+                        return;
+                    }
+
+                    const startPlayback = () => {
+                        if (!allowOverlap) {
+                            this.stopActiveCue(tag);
+                        }
+                        audio.currentTime = 0;
+                        audio.volume = Math.max(targetVolume, 0);
+                        audio.play().catch(() => {});
+                        if (!allowOverlap) {
+                            this.trackActiveCue(tag, { context: null, source: null, gainNode: null, htmlAudio: audio });
+                        }
+                    };
+
+                    if (delayMs > 0) {
+                        const timer = window.setTimeout(() => {
+                            if (!allowOverlap) {
+                                this.cueTimers.delete(tag);
+                            }
+                            startPlayback();
+                        }, delayMs);
+                        if (!allowOverlap) {
+                            this.cueTimers.set(tag, timer);
+                        }
+                    } else {
+                        startPlayback();
+                    }
+                };
+
+                if (!this.audioEnabled) {
+                    this.pendingActions.push(trigger);
+                    return;
+                }
+
+                trigger();
+            }
+
+            ensureContext() {
+                if (this.context || !this.AudioContextCtor) {
+                    return this.context;
+                }
+
+                try {
+                    this.context = new this.AudioContextCtor();
+                    this.masterGain = this.context.createGain();
+                    this.masterGain.gain.setValueAtTime(1, this.context.currentTime);
+                    this.masterGain.connect(this.context.destination);
+                } catch (error) {
+                    console.warn("[SoundEngine] Unable to create AudioContext", error);
+                    this.context = null;
+                    this.masterGain = null;
+                }
+
+                return this.context;
+            }
+
+            loadCueBuffer(name, src) {
+                if (!this.AudioContextCtor) {
+                    return Promise.resolve(null);
+                }
+
+                if (this.cueBuffers.has(name)) {
+                    return Promise.resolve(this.cueBuffers.get(name));
+                }
+
+                if (this.cueLoading.has(name)) {
+                    return this.cueLoading.get(name);
+                }
+
+                const ctx = this.ensureContext();
+                if (!ctx) {
+                    return Promise.resolve(null);
+                }
+
+                const loadPromise = fetch(src)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status} for ${src}`);
+                        }
+                        return response.arrayBuffer();
+                    })
+                    .then(arrayBuffer => new Promise((resolve, reject) => {
+                        const decode = ctx.decodeAudioData.bind(ctx);
+                        if (decode.length === 1) {
+                            decode(arrayBuffer).then(resolve).catch(reject);
+                        } else {
+                            decode(arrayBuffer, resolve, reject);
+                        }
+                    }))
+                    .then(buffer => {
+                        this.cueBuffers.set(name, buffer);
+                        return buffer;
+                    })
+                    .catch(error => {
+                        console.warn(`[SoundEngine] Failed to load cue buffer "${name}"`, error);
+                        return null;
+                    })
+                    .finally(() => {
+                        this.cueLoading.delete(name);
+                    });
+
+                this.cueLoading.set(name, loadPromise);
+                return loadPromise;
+            }
+
+            trackActiveCue(tag, payload) {
+                if (!tag) {
+                    return;
+                }
+                this.activeCueSources.set(tag, payload);
+            }
+
+            stopActiveCue(tag) {
+                if (!tag) {
+                    return;
+                }
+
+                const active = this.activeCueSources.get(tag);
+                if (!active) {
+                    return;
+                }
+
+                if (active.source) {
+                    try {
+                        active.source.stop();
+                    } catch (error) {}
+                }
+
+                if (active.htmlAudio) {
+                    active.htmlAudio.pause();
+                    active.htmlAudio.currentTime = 0;
+                }
+
+                this.activeCueSources.delete(tag);
+            }
+
+            clearCueTimer(tag) {
+                if (!tag) {
+                    return;
+                }
+
+                const timer = this.cueTimers.get(tag);
+                if (timer !== undefined) {
+                    clearTimeout(timer);
+                    this.cueTimers.delete(tag);
+                }
+            }
+
+            preloadCue(name) {
+                const config = this.cueLibrary[name];
+                if (!config) {
+                    return Promise.resolve();
+                }
+
+                if (this.AudioContextCtor) {
+                    return this.loadCueBuffer(name, config.src).then(() => {});
+                }
+
+                if (this.htmlPreloads.has(name)) {
+                    return this.htmlPreloads.get(name);
+                }
+
+                const audio = this.createAudio({ ...config, loop: false });
+                if (!audio) {
+                    return Promise.resolve();
+                }
+
+                this.htmlAudioCache.set(name, audio);
+
+                const preloadPromise = new Promise(resolve => {
+                    const cleanup = () => {
+                        audio.removeEventListener("canplaythrough", cleanup);
+                        audio.removeEventListener("error", cleanup);
+                        resolve();
+                    };
+
+                    audio.addEventListener("canplaythrough", cleanup, { once: true });
+                    audio.addEventListener("error", cleanup, { once: true });
+                    audio.load();
+                });
+
+                this.htmlPreloads.set(name, preloadPromise);
+                return preloadPromise;
+            }
+
+            startLoop(name, { forceRestart = false } = {}) {
+                const config = this.loopConfigs[name];
+                if (!config) {
+                    return null;
+                }
+
+                const start = () => {
+                    let audio = this.loopAudios.get(name);
+
+                    if (!audio || forceRestart) {
+                        if (audio) {
+                            audio.pause();
+                        }
+                        audio = this.createAudio(config);
+                        if (!audio) {
+                            return null;
+                        }
+                        this.loopAudios.set(name, audio);
+                    }
+
+                    if (forceRestart) {
+                        audio.currentTime = 0;
+                    }
+
+                    if (this.muted) {
+                        return audio;
+                    }
+
+                    if (audio.paused) {
+                        audio.play().catch(() => {});
+                    }
+
+                    return audio;
+                };
+
+                if (!this.audioEnabled) {
+                    this.pendingActions.push(() => start());
+                    return null;
+                }
+
+                return start();
+            }
+
+            stopLoop(name, options) {
+                const audio = this.loopAudios.get(name);
+                if (!audio) {
+                    return;
+                }
+
+                let reset = true;
+                let delayMs = 0;
+
+                if (typeof options === "number") {
+                    delayMs = Math.max(options, 0) * 1000;
+                } else if (options && typeof options === "object") {
+                    if (typeof options.reset === "boolean") {
+                        reset = options.reset;
+                    }
+                    if (typeof options.delayMs === "number") {
+                        delayMs = Math.max(options.delayMs, 0);
+                    } else if (typeof options.delay === "number") {
+                        delayMs = Math.max(options.delay, 0) * 1000;
+                    }
+                }
+
+                const performStop = () => {
+                    audio.pause();
+                    if (reset) {
+                        audio.currentTime = 0;
+                    }
+
+                    if (!this.isPersistentLoop(name)) {
+                        this.loopAudios.delete(name);
+                    }
+                };
+
+                if (delayMs > 0) {
+                    window.setTimeout(performStop, delayMs);
+                } else {
+                    performStop();
+                }
+            }
+
+            pauseAllLoops() {
+                this.loopAudios.forEach(audio => {
+                    audio.pause();
+                });
+            }
+
+            flushPending() {
+                if (!this.audioEnabled || this.muted || !this.pendingActions.length) {
+                    return;
+                }
+
+                const actions = [...this.pendingActions];
+                this.pendingActions.length = 0;
+                actions.forEach(action => {
+                    try {
+                        action();
+                    } catch (error) {
+                        console.warn("[SoundEngine] Failed to run pending audio action", error);
+                    }
+                });
+            }
+
+            isPersistentLoop(name) {
+                return name === "ambient" || name === "arcReactor" || name === "radarSweep";
+            }
+        }
+
+        const introOverlay = document.getElementById("introOverlay");
+        const startButton = document.getElementById("startButton");
+
+        const soundEngine = new SoundEngine({ autoStartLoops: false });
+
+        function revealHud() {
+            if (introOverlay) {
+                introOverlay.classList.add("intro-overlay--hidden");
+                window.setTimeout(() => {
+                    if (introOverlay.parentElement) {
+                        introOverlay.parentElement.removeChild(introOverlay);
+                    }
+                }, 900);
+            }
+        }
+
+        // Calculate particle positions in a circle
+        function calculateParticlePositions(count, radius, centerX, centerY) {
+            const positions = [];
+            for (let i = 0; i < count; i++) {
+                const angle = (i * 360 / count) * (Math.PI / 180);
+                positions.push({
+                    x: centerX + radius * Math.cos(angle),
+                    y: centerY + radius * Math.sin(angle)
+                });
+            }
+            return positions;
+        }
+
+        const particlePositions = calculateParticlePositions(
+            PARTICLE_COUNT, 
+            PARTICLE_RADIUS, 
+            PARTICLE_CENTER_X, 
+            PARTICLE_CENTER_Y
+        );
+
+        // Apply positions to particles
+        const particles = Array.from(document.querySelectorAll('#particles .particle'));
+
+        particles.forEach((particle, index) => {
+            if (particlePositions[index]) {
+                particle.setAttribute('cx', particlePositions[index].x);
+                particle.setAttribute('cy', particlePositions[index].y);
+            }
+        });
+
+        const particleOrbitData = particles
+            .map((particle, index) => {
+                if (!particlePositions[index]) {
+                    return null;
+                }
+
+                const { x, y } = particlePositions[index];
+                const dx = x - PARTICLE_CENTER_X;
+                const dy = y - PARTICLE_CENTER_Y;
+                const baseRadius = parseFloat(particle.getAttribute('r')) || 4;
+
+                return {
+                    element: particle,
+                    radius: Math.hypot(dx, dy),
+                    angle: Math.atan2(dy, dx),
+                    baseRadius
+                };
+            })
+            .filter(Boolean);
+
+        const WAVE_CENTER_Y = 300;
+
+        function generateWavePath(startX, endX, amplitude, phase, wavelength, samples = 28) {
+            const length = endX - startX;
+            let d = "";
+            for (let i = 0; i <= samples; i++) {
+                const progress = i / samples;
+                const x = startX + length * progress;
+                const y = WAVE_CENTER_Y + amplitude * Math.sin((2 * Math.PI / wavelength) * length * progress + phase);
+                d += i === 0 ? `M ${x.toFixed(2)} ${y.toFixed(2)}` : ` L ${x.toFixed(2)} ${y.toFixed(2)}`;
+            }
+            return d;
+        }
+
+        const PHASE_STEP = (2 * Math.PI) / 6;
+
+        const waveConfigs = [
+            { selector: ".wave-1", startX: 150, endX: 450, amplitude: 24, wavelength: 180, duration: 1600, phaseIndex: 0 },
+            { selector: ".wave-2", startX: 150, endX: 450, amplitude: 24, wavelength: 180, duration: 1600, phaseIndex: 1 },
+            { selector: ".wave-3", startX: 150, endX: 450, amplitude: 24, wavelength: 180, duration: 1600, phaseIndex: 2 },
+            { selector: ".wave-4", startX: 150, endX: 450, amplitude: 24, wavelength: 180, duration: 1600, phaseIndex: 3 },
+            { selector: ".wave-5", startX: 150, endX: 450, amplitude: 24, wavelength: 180, duration: 1600, phaseIndex: 4 },
+            { selector: ".wave-6", startX: 150, endX: 450, amplitude: 24, wavelength: 180, duration: 1600, phaseIndex: 5 }
+        ];
+
+        const waveStates = waveConfigs
+            .map(({ selector, startX, endX, amplitude, wavelength, duration, phaseIndex }) => {
+                const element = document.querySelector(selector);
+                if (!element) {
+                    return null;
+                }
+
+                return {
+                    element,
+                    startX,
+                    endX,
+                    amplitude,
+                    wavelength,
+                    duration,
+                    phase: phaseIndex * PHASE_STEP
+                };
+            })
+            .filter(Boolean);
+
+        waveStates.forEach(state => {
+            const d = generateWavePath(state.startX, state.endX, state.amplitude, state.phase, state.wavelength);
+            state.element.setAttribute("d", d);
+        });
+
+        const waveAnimations = waveStates.map(state => {
+            return anime({
+                targets: state,
+                phase: state.phase + 2 * Math.PI,
+                duration: state.duration,
+                easing: "linear",
+                loop: true,
+                autoplay: false,
+                update: anim => {
+                    const target = anim.animatables[0].target;
+                    const d = generateWavePath(
+                        target.startX,
+                        target.endX,
+                        target.amplitude,
+                        target.phase,
+                        target.wavelength
+                    );
+                    target.element.setAttribute("d", d);
+                }
+            });
+        });
+
+        function startWaveAnimations() {
+            waveAnimations.forEach(anim => {
+                anim.play();
+            });
+        }
+
+        // Apply logo position to the entire logo group
+        const logoGroup = document.getElementById('logo-group');
+        logoGroup.setAttribute('transform', `translate(${LOGO_X}, ${LOGO_Y}) scale(${LOGO_SCALE}) translate(-123.5, -123.5)`);
+
+        const timeline = anime.timeline({
+            easing: "easeOutQuad",
+            autoplay: false
+        });
+
+        timeline
+            .add({
+                targets: ".outer-trace",
+                opacity: [0, 0.35],
+                duration: 800,
+                easing: "easeOutSine",
+                delay: anime.stagger(120),
+                begin: () => soundEngine.playCue("boot")
+            })
+            .add({
+                targets: [".outer-ring", ".outer-ticks"],
+                strokeDashoffset: [anime.setDashoffset, 0],
+                opacity: [0, 0.7],
+                duration: 1200,
+                easing: "easeOutExpo",
+                offset: "-=400"
+            })
+            .add({
+                targets: ".outer-arcs .arc-layer--glow",
+                strokeDashoffset: [anime.setDashoffset, 0],
+                opacity: [0, 0.65],
+                duration: 1000,
+                delay: anime.stagger(180),
+                easing: "easeOutQuad",
+                offset: "-=600",
+                begin: () => soundEngine.playCue("arcSweep")
+            })
+            .add({
+                targets: ".outer-arcs .arc-layer--base",
+                strokeDashoffset: [anime.setDashoffset, 0],
+                opacity: [0, 0.9],
+                duration: 1100,
+                delay: anime.stagger(220),
+                easing: "easeOutExpo",
+                offset: "-=800"
+            })
+            .add({
+                targets: ".outer-arcs .arc-layer--detail",
+                strokeDashoffset: [anime.setDashoffset, 0],
+                opacity: [0, 1],
+                duration: 1200,
+                delay: anime.stagger(160, { from: "center" }),
+                easing: "easeOutExpo",
+                offset: "-=900"
+            })
+            .add({
+                targets: ".outer-arcs .arc-layer--spark",
+                strokeDashoffset: [anime.setDashoffset, 0],
+                opacity: [0, 1],
+                duration: 900,
+                delay: anime.stagger(140),
+                easing: "easeOutBack",
+                offset: "-=950"
+            })
+            .add({
+                targets: [".inner-ring", ".inner-ring--glow"],
+                strokeDashoffset: [anime.setDashoffset, 0],
+                opacity: [0, 1],
+                duration: 1000,
+                easing: "easeOutExpo",
+                offset: "-=500",
+                begin: () => soundEngine.playCue("innerRingReveal")
+            })
+            // Sound waves appear
+            .add({
+                targets: "#sound-waves .sound-wave",
+                opacity: [0, 0.8],
+                strokeDashoffset: [anime.setDashoffset, 0],
+                duration: 800,
+                delay: anime.stagger(60),
+                easing: "easeOutExpo",
+                begin: () => {
+                    soundEngine.playCue("waveRise");
+                    soundEngine.startLoop("waveShimmer");
+                    startWaveAnimations();
+                }
+            })
+            .add({
+                targets: [".wave-3", ".wave-4", ".wave-5", ".wave-6"],
+                strokeWidth: [3, 5, 3],
+                duration: 500,
+                easing: "easeInOutSine",
+                offset: "-=500"
+            })
+            // Particles burst
+            .add({
+                targets: "#particles .particle",
+                opacity: [0, 1],
+                r: [0, 4],
+                duration: 800,
+                delay: anime.stagger(100, {from: 'center'}),
+                easing: "easeOutElastic(1, .8)",
+                begin: () => soundEngine.playCue("particleBurst")
+            })
+            // Particles orbit and glow while rotating
+            .add({
+                targets: "#particles .particle",
+                r: [4, 7.5],
+                filter: "drop-shadow(0 0 22px rgba(76, 244, 255, 0.95)) drop-shadow(0 0 36px rgba(0, 212, 255, 0.9))",
+                duration: 600,
+                easing: "easeInOutSine",
+                offset: "-=400"
+            })
+            // Revolve particles individually around center
+            .add({
+                targets: particleOrbitData,
+                angle: data => data.angle + FULL_REVOLUTION_RADIANS,
+                duration: PARTICLE_ROTATION_DURATION,
+                easing: "easeInOutQuart",
+                begin: () => soundEngine.startLoop("particleOrbits"),
+                update: anim => {
+                    const progress = anim.progress / 100;
+                    const easedGlow = 22 + progress * 24;
+                    const outerGlow = 36 + progress * 30;
+                    const outerOpacity = 0.6 + progress * 0.4;
+                    const innerOpacity = 0.45 + progress * 0.4;
+
+                    anim.animatables.forEach(({ target }) => {
+                        const x = PARTICLE_CENTER_X + target.radius * Math.cos(target.angle);
+                        const y = PARTICLE_CENTER_Y + target.radius * Math.sin(target.angle);
+                        target.element.setAttribute('cx', x);
+                        target.element.setAttribute('cy', y);
+                        const glowPrimary = easedGlow.toFixed(1);
+                        const glowSecondary = outerGlow.toFixed(1);
+                        const glowPrimaryAlpha = outerOpacity.toFixed(2);
+                        const glowSecondaryAlpha = innerOpacity.toFixed(2);
+                        target.element.style.setProperty('--particle-glow-primary', `${glowPrimary}px`);
+                        target.element.style.setProperty('--particle-glow-secondary', `${glowSecondary}px`);
+                        target.element.style.setProperty('--particle-glow-primary-alpha', glowPrimaryAlpha);
+                        target.element.style.setProperty('--particle-glow-secondary-alpha', glowSecondaryAlpha);
+                        target.element.dataset.glowPrimary = glowPrimary;
+                        target.element.dataset.glowSecondary = glowSecondary;
+                        target.element.dataset.glowPrimaryAlpha = glowPrimaryAlpha;
+                        target.element.dataset.glowSecondaryAlpha = glowSecondaryAlpha;
+                    });
+                },
+                complete: anim => {
+                    anim.animatables.forEach(({ target }) => {
+                        const baseR = target.baseRadius || parseFloat(target.element.getAttribute('r')) || 4;
+                        anime({
+                            targets: target.element,
+                            r: [baseR + 0.6, baseR - 0.6],
+                            duration: 260,
+                            easing: "easeInOutSine",
+                            direction: "alternate",
+                            loop: 4,
+                            complete: () => {
+                                target.element.setAttribute('r', baseR);
+                                const finalPrimary = target.element.dataset.glowPrimary || '46';
+                                const finalSecondary = target.element.dataset.glowSecondary || '66';
+                                const finalPrimaryAlpha = target.element.dataset.glowPrimaryAlpha || '0.9';
+                                const finalSecondaryAlpha = target.element.dataset.glowSecondaryAlpha || '0.8';
+                                target.element.style.setProperty('--particle-glow-primary', `${finalPrimary}px`);
+                                target.element.style.setProperty('--particle-glow-secondary', `${finalSecondary}px`);
+                                target.element.style.setProperty('--particle-glow-primary-alpha', finalPrimaryAlpha);
+                                target.element.style.setProperty('--particle-glow-secondary-alpha', finalSecondaryAlpha);
+                            }
+                        });
+                    });
+                }
+            })
+            .add({
+                targets: ".fusion-core",
+                opacity: [0, 0.7],
+                r: [0, 12],
+                color: ["rgba(0, 232, 255, 0.85)", "rgba(0, 232, 255, 0.85)"],
+                duration: 300,
+                easing: "easeOutQuad",
+                begin: () => soundEngine.playCue("coreCharge")
+            })
+            // Particles converge to center one by one (all move to center)
+            .add({
+                targets: ".p-1",
+                cx: particlePositions[0] ? [particlePositions[0].x, PARTICLE_CENTER_X] : [300, PARTICLE_CENTER_X],
+                cy: particlePositions[0] ? [particlePositions[0].y, PARTICLE_CENTER_Y] : [160, PARTICLE_CENTER_Y],
+                r: [6, 10, 0],
+                opacity: [1, 1, 0],
+                filter: [
+                    "drop-shadow(0 0 20px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 35px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 50px rgba(0, 212, 255, 1))"
+                ],
+                duration: 700,
+                easing: "easeInExpo",
+                begin: () => soundEngine.playCue("particleCombine")
+            })
+            .add({
+                targets: ".fusion-core",
+                keyframes: [
+                    { r: 22, duration: 140, easing: "easeOutQuad" },
+                    { r: 18, duration: 100, easing: "easeInQuad" }
+                ],
+                opacity: 0.78,
+                color: "rgba(64, 240, 255, 0.92)",
+                offset: "-=420"
+            })
+            .add({
+                targets: ".p-2",
+                cx: particlePositions[1] ? [particlePositions[1].x, PARTICLE_CENTER_X] : [399, PARTICLE_CENTER_X],
+                cy: particlePositions[1] ? [particlePositions[1].y, PARTICLE_CENTER_Y] : [200, PARTICLE_CENTER_Y],
+                r: [6, 10, 0],
+                opacity: [1, 1, 0],
+                filter: [
+                    "drop-shadow(0 0 20px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 35px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 50px rgba(0, 212, 255, 1))"
+                ],
+                duration: 700,
+                easing: "easeInExpo",
+                offset: "-=600",
+                begin: () => soundEngine.playCue("particleCombine")
+            })
+            .add({
+                targets: ".fusion-core",
+                keyframes: [
+                    { r: 28, duration: 140, easing: "easeOutQuad" },
+                    { r: 24, duration: 100, easing: "easeInQuad" }
+                ],
+                opacity: 0.82,
+                color: "rgba(80, 255, 140, 0.93)",
+                offset: "-=420"
+            })
+            .add({
+                targets: ".p-3",
+                cx: particlePositions[2] ? [particlePositions[2].x, PARTICLE_CENTER_X] : [440, PARTICLE_CENTER_X],
+                cy: particlePositions[2] ? [particlePositions[2].y, PARTICLE_CENTER_Y] : [300, PARTICLE_CENTER_Y],
+                r: [6, 10, 0],
+                opacity: [1, 1, 0],
+                filter: [
+                    "drop-shadow(0 0 20px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 35px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 50px rgba(0, 212, 255, 1))"
+                ],
+                duration: 700,
+                easing: "easeInExpo",
+                offset: "-=600",
+                begin: () => soundEngine.playCue("particleCombine")
+            })
+            .add({
+                targets: ".fusion-core",
+                keyframes: [
+                    { r: 36, duration: 140, easing: "easeOutQuad" },
+                    { r: 32, duration: 100, easing: "easeInQuad" }
+                ],
+                opacity: 0.86,
+                color: "rgba(150, 255, 150, 0.95)",
+                offset: "-=420"
+            })
+            .add({
+                targets: ".p-4",
+                cx: particlePositions[3] ? [particlePositions[3].x, PARTICLE_CENTER_X] : [399, PARTICLE_CENTER_X],
+                cy: particlePositions[3] ? [particlePositions[3].y, PARTICLE_CENTER_Y] : [400, PARTICLE_CENTER_Y],
+                r: [6, 10, 0],
+                opacity: [1, 1, 0],
+                filter: [
+                    "drop-shadow(0 0 20px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 35px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 50px rgba(0, 212, 255, 1))"
+                ],
+                duration: 700,
+                easing: "easeInExpo",
+                offset: "-=600",
+                begin: () => soundEngine.playCue("particleCombine")
+            })
+            .add({
+                targets: ".fusion-core",
+                keyframes: [
+                    { r: 46, duration: 140, easing: "easeOutQuad" },
+                    { r: 40, duration: 100, easing: "easeInQuad" }
+                ],
+                opacity: 0.9,
+                color: "rgba(220, 255, 140, 0.96)",
+                offset: "-=420"
+            })
+            .add({
+                targets: ".p-5",
+                cx: particlePositions[4] ? [particlePositions[4].x, PARTICLE_CENTER_X] : [300, PARTICLE_CENTER_X],
+                cy: particlePositions[4] ? [particlePositions[4].y, PARTICLE_CENTER_Y] : [440, PARTICLE_CENTER_Y],
+                r: [6, 10, 0],
+                opacity: [1, 1, 0],
+                filter: [
+                    "drop-shadow(0 0 20px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 35px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 50px rgba(0, 212, 255, 1))"
+                ],
+                duration: 700,
+                easing: "easeInExpo",
+                offset: "-=600",
+                begin: () => soundEngine.playCue("particleCombine")
+            })
+            .add({
+                targets: ".fusion-core",
+                keyframes: [
+                    { r: 54, duration: 140, easing: "easeOutQuad" },
+                    { r: 48, duration: 100, easing: "easeInQuad" }
+                ],
+                opacity: 0.94,
+                color: "rgba(255, 210, 120, 0.97)",
+                offset: "-=420"
+            })
+            .add({
+                targets: ".p-6",
+                cx: particlePositions[5] ? [particlePositions[5].x, PARTICLE_CENTER_X] : [201, PARTICLE_CENTER_X],
+                cy: particlePositions[5] ? [particlePositions[5].y, PARTICLE_CENTER_Y] : [400, PARTICLE_CENTER_Y],
+                r: [6, 10, 0],
+                opacity: [1, 1, 0],
+                filter: [
+                    "drop-shadow(0 0 20px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 35px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 50px rgba(0, 212, 255, 1))"
+                ],
+                duration: 700,
+                easing: "easeInExpo",
+                offset: "-=600",
+                begin: () => soundEngine.playCue("particleCombine")
+            })
+            .add({
+                targets: ".fusion-core",
+                keyframes: [
+                    { r: 63, duration: 140, easing: "easeOutQuad" },
+                    { r: 56, duration: 100, easing: "easeInQuad" }
+                ],
+                opacity: 0.97,
+                color: "rgba(255, 170, 100, 0.98)",
+                offset: "-=420"
+            })
+            .add({
+                targets: ".p-7",
+                cx: particlePositions[6] ? [particlePositions[6].x, PARTICLE_CENTER_X] : [160, PARTICLE_CENTER_X],
+                cy: particlePositions[6] ? [particlePositions[6].y, PARTICLE_CENTER_Y] : [300, PARTICLE_CENTER_Y],
+                r: [6, 10, 0],
+                opacity: [1, 1, 0],
+                filter: [
+                    "drop-shadow(0 0 20px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 35px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 50px rgba(0, 212, 255, 1))"
+                ],
+                duration: 700,
+                easing: "easeInExpo",
+                offset: "-=600",
+                begin: () => soundEngine.playCue("particleCombine")
+            })
+            .add({
+                targets: ".fusion-core",
+                keyframes: [
+                    { r: 72, duration: 140, easing: "easeOutQuad" },
+                    { r: 64, duration: 100, easing: "easeInQuad" }
+                ],
+                opacity: 1,
+                color: "rgba(255, 120, 90, 0.98)",
+                offset: "-=420"
+            })
+            .add({
+                targets: ".p-8",
+                cx: particlePositions[7] ? [particlePositions[7].x, PARTICLE_CENTER_X] : [201, PARTICLE_CENTER_X],
+                cy: particlePositions[7] ? [particlePositions[7].y, PARTICLE_CENTER_Y] : [200, PARTICLE_CENTER_Y],
+                r: [6, 10, 0],
+                opacity: [1, 1, 0],
+                filter: [
+                    "drop-shadow(0 0 20px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 35px rgba(0, 212, 255, 1))",
+                    "drop-shadow(0 0 50px rgba(0, 212, 255, 1))"
+                ],
+                duration: 700,
+                easing: "easeInExpo",
+                offset: "-=600",
+                begin: () => soundEngine.playCue("particleCombine")
+            })
+            .add({
+                targets: ".fusion-core",
+                keyframes: [
+                    { r: 82, duration: 140, easing: "easeOutQuad" },
+                    { r: 72, duration: 100, easing: "easeInQuad" }
+                ],
+                opacity: 1,
+                color: "rgba(255, 80, 80, 0.99)",
+                offset: "-=420",
+                begin: () => soundEngine.playCue("corePulse")
+            })
+            .add({
+                targets: ".fusion-core",
+                r: [72, 115],
+                opacity: [1, 0],
+                color: ["rgba(255, 80, 80, 0.99)", "rgba(255, 255, 255, 1)"],
+                duration: 500,
+                easing: "easeOutExpo",
+                offset: "-=400",
+                begin: () => soundEngine.playCue("coreBlast")
+            })
+            // Waves and particles fade
+            .add({
+                targets: "#sound-waves .sound-wave",
+                opacity: [0.8, 0],
+                duration: 400,
+                easing: "easeOutExpo",
+                offset: "-=300",
+                begin: () => {
+                    soundEngine.stopLoop("waveShimmer", 0.3);
+                    waveAnimations.forEach(anim => anim.pause());
+                }
+            })
+            // Logo materializes
+            .add({
+                targets: ".logo-main",
+                opacity: [0, 1],
+                scale: [0.3, 1],
+                duration: 1000,
+                easing: "easeOutElastic(1, .6)",
+                begin: () => soundEngine.playCue("logoReveal"),
+                offset: "-=100"
+            })
+            .add({
+                targets: [".logo-eye-left-black", ".logo-eye-right-black"],
+                opacity: [0, 1],
+                scaleY: [0, 1],
+                duration: 600,
+                delay: anime.stagger(120),
+                easing: "easeOutElastic(1, .6)"
+            })
+            .add({
+                targets: [".logo-eye-left-white", ".logo-eye-right-white"],
+                opacity: [0, 1],
+                scale: [0, 1],
+                duration: 500,
+                delay: anime.stagger(100),
+                easing: "easeOutBack",
+                offset: "-=200"
+            })
+            .add({
+                targets: [".logo-eye-black"],
+                scaleY: [1, 0.18, 1, 0.18, 1],
+                duration: 1800,
+                easing: "easeInOutQuad",
+                begin: () => triggerLogoBlink()
+            })
+            .add({
+                targets: "#orbit-dots .orbit-dot",
+                opacity: [0, 1],
+                translateY: [20, 0],
+                duration: 600,
+                delay: anime.stagger(80),
+                offset: "-=400"
+            });
+
+        // Continuous motions
+        anime({
+            targets: ".outer-rotate",
+            rotate: 360,
+            duration: 9000,
+            easing: "linear",
+            loop: true
+        });
+
+        anime({
+            targets: "#orbit-dots",
+            rotate: 360,
+            duration: 14000,
+            easing: "linear",
+            loop: true
+        });
+
+        const RADAR_PULSE_STAGGER = 800;
+        const radarPulseElements = Array.from(document.querySelectorAll(".radar-pulse"));
+
+        radarPulseElements.forEach((element, index) => {
+            const cueTag = `radar-pulse-${index}`;
+            const animation = anime({
+                targets: element,
+                scale: [0.6, 1.35],
+                opacity: [0.8, 0],
+                duration: 2000,
+                easing: "easeOutQuad",
+                loop: true,
+                autoplay: false,
+                loopBegin: () => {
+                    soundEngine.playCue("waveRipple", { tag: cueTag, allowOverlap: true });
+                }
+            });
+
+            window.setTimeout(() => {
+                animation.play();
+            }, index * RADAR_PULSE_STAGGER);
+        });
+
+        anime({
+            targets: ".logo-main",
+            filter: [
+                "drop-shadow(0 0 20px rgba(0, 70, 255, 0.8))",
+                "drop-shadow(0 0 35px rgba(0, 70, 255, 1))",
+                "drop-shadow(0 0 20px rgba(0, 70, 255, 0.8))"
+            ],
+            duration: 2000,
+            easing: "easeInOutSine",
+            loop: true
+        });
+
+        // ===== ASYNC TRIGGERS AND HELPERS =====
+        function triggerLogoBlink() {
+            anime.remove(".logo-eye-black");
+            anime({
+                targets: ".logo-eye-black",
+                scaleY: [1, 0.18, 1, 0.18, 1],
+                duration: 1800,
+                easing: "easeInOutQuad",
+                begin: () => {
+                    soundEngine.playCue("eyeBlink", { delayMs: 450, allowOverlap: true });
+                    soundEngine.playCue("eyeBlink", { delayMs: 1100, allowOverlap: true });
+                }
+            });
+        }
+
+        function scheduleNextBlink() {
+            const minDelay = 5000;
+            const maxDelay = 8000;
+            const delay = minDelay + Math.random() * (maxDelay - minDelay);
+            window.setTimeout(() => {
+                triggerLogoBlink();
+                scheduleNextBlink();
+            }, delay);
+        }
+
+        timeline.finished.then(() => {
+            scheduleNextBlink();
+        });
+
+        function beginExperience() {
+            const delayMs = 2000;
+            if (startButton) {
+                startButton.disabled = true;
+                startButton.textContent = "Preparing...";
+            }
+
+            window.setTimeout(() => {
+                timeline.restart();
+                soundEngine.unlockAudio();
+                soundEngine.startPersistentLoops({ forceRestart: true });
+                revealHud();
+            }, delayMs);
+        }
+
+        if (startButton) {
+            startButton.addEventListener("click", () => {
+                beginExperience();
+            });
+        }
+
+        // ===== STARFIELD SETUP =====
+        const starfieldEl = document.querySelector(".starfield");
+        const STAR_COUNT = 120;
+        const FLICKER_STARS = Math.floor(STAR_COUNT * 0.25);
+
+        function createStar({ flare = false } = {}) {
+            const star = document.createElement("span");
+            star.className = "star" + (flare ? " star--flare" : "");
+
+            const top = Math.random() * 100;
+            const left = Math.random() * 100;
+            const scale = flare ? 1.6 + Math.random() * 0.8 : 0.8 + Math.random() * 1.2;
+            const minOpacity = flare ? 0.35 : 0.15 + Math.random() * 0.2;
+            const maxOpacity = flare ? 1 : 0.55 + Math.random() * 0.35;
+            const twinkleDuration = flare ? 5 + Math.random() * 3 : 3 + Math.random() * 4;
+            const twinkleDelay = Math.random() * -twinkleDuration;
+
+            star.style.top = `${top}%`;
+            star.style.left = `${left}%`;
+            star.style.setProperty("--star-scale", scale.toFixed(2));
+            star.style.setProperty("--star-min-opacity", minOpacity.toFixed(2));
+            star.style.setProperty("--star-max-opacity", maxOpacity.toFixed(2));
+            star.style.setProperty("--twinkle-duration", `${twinkleDuration.toFixed(2)}s`);
+            star.style.setProperty("--twinkle-delay", `${twinkleDelay.toFixed(2)}s`);
+
+            return star;
+        }
+
+        if (starfieldEl) {
+            for (let i = 0; i < STAR_COUNT; i += 1) {
+                const star = createStar();
+                starfieldEl.appendChild(star);
+            }
+
+            for (let i = 0; i < FLICKER_STARS; i += 1) {
+                const flareStar = createStar({ flare: true });
+                flareStar.style.animationDelay = `${Math.random() * 8}s`;
+                starfieldEl.appendChild(flareStar);
+            }
+        }
+    </script>
+</body>
+</html>
